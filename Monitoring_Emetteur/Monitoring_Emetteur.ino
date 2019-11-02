@@ -24,10 +24,14 @@ float tension_regulateur=8925.0;  // Variable tension réelle aux bornes du rég
 /* SETUP */
 /*********/  
 void setup() {
-//  Serial.begin(9600); // Debug
+  Serial.begin(9600); // Debug
   HC12.begin(9600);               // Serial port to HC12
   // Pin capteurs
   pinMode(ATpin, OUTPUT);
+  digitalWrite(ATpin, LOW); // Set HC-12 into AT Command mode
+  delay(500);
+  HC12.print("AT+C006");  // passer sur le canal 006 (433.4Mhz + 6x400KHz)
+  delay(500);
   digitalWrite(ATpin, HIGH); // HC-12 en normal mode
 }
 
@@ -103,4 +107,3 @@ void TensionBatterie() {
   Serial.println(" V ");
 //  Serial.println("  ");
 }
-
