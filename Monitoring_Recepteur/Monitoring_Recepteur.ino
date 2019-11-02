@@ -139,7 +139,7 @@ float mapfloat(float x, float in_min, float in_max, float out_min, float out_max
 //# SETUP #
 //#########
 void setup() {
-//  Serial.begin(9600); // Debug
+  Serial.begin(9600); // Debug
   lcd.begin(20,4); // Initialise le LCD avec 20 colonnes x 4 lignes 
   delay(10); // pause rapide pour laisser temps initialisation
   lcd.print("LCD OK") ; // affiche la chaîne texte - message de test
@@ -157,12 +157,10 @@ void setup() {
   lcd.createChar(9, fleche);
   HC12.begin(9600);               // Serial port to HC12
   pinMode(ATpin, OUTPUT);
-//  digitalWrite(ATpin, LOW); // HC-12 en normal mode
-//  delay(500);
-//  HC12.print("AT+FU1");
-//  delay(500);
-//  HC12.print("AT+B115200");
-//  delay(500);
+  digitalWrite(ATpin, LOW); // Set HC-12 into AT Command mode
+  delay(500);
+  HC12.print("AT+C006");  // passer sur le canal 006 (433.4Mhz + 6x400KHz)
+  delay(500);
   digitalWrite(ATpin, HIGH); // HC-12 en normal mode
 } 
 
@@ -191,10 +189,10 @@ pour chaque ligne on fait :*/
  //   if (acquis_data == 10) {  //détection de fin de ligne : en ascii
     if (chaine.endsWith("\n")) {  //détection de fin de ligne : méthodes String
 //      Serial.println ("fin de ligne");   // debug
-      String phrase = "12.43 VOLTS / 0.70 AMPERES";
+      String phrase = "12.43 VOL / 0.70 AMP";
       char tension_batterie[5];
       char Courant[4];
-//      sscanf(phrase.c_str(), "%s VOLTS / %s AMPERES", tension_batterie, &Courant);
+//      sscanf(phrase.c_str(), "%s VOL / %s AMP", tension_batterie, &Courant);
       sscanf(chaine.c_str(), "%s VOL / %s AMP", tension_batterie, &Courant); //la chaine à parser est dans une String, avec la méthode c_str()
       Serial.print("VOLTS:");
       Serial.println(atof(tension_batterie),3); // char convertis en Float
