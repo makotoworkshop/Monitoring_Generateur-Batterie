@@ -32,14 +32,14 @@ SoftwareSerial HC12(8, 9); // HC-12 TX Pin, HC-12 RX Pin
 char acquis_data;
 String chaine;
 
-char tension_batterie;   // variable des data reçue
-char Courant;   // variable des data reçue
+//char tension_batterie;   // variable des data reçue
+//char Courant;   // variable des data reçue
 float SupplyVoltage=12;
 float tension_jauge;
 
 const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2; // Déclaration LCD
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);  // initialisation LCD en mode 4 bits 
-byte carre00[] = {  // Déclaration de caractères personnalisés
+byte carre00[8] = {  // Déclaration de caractères personnalisés
   B11111,
   B00000,
   B00000,
@@ -49,7 +49,7 @@ byte carre00[] = {  // Déclaration de caractères personnalisés
   B00000,
   B11111
 };
-byte carre01[] = {
+byte carre01[8] = {
   B11111,
   B00000,
   B10000,
@@ -59,7 +59,7 @@ byte carre01[] = {
   B00000,
   B11111
 };
-byte carre02[] = {
+byte carre02[8] = {
   B11111,
   B00000,
   B11000,
@@ -69,7 +69,7 @@ byte carre02[] = {
   B00000,
   B11111
 };
-byte carre03[] = {
+byte carre03[8] = {
   B11111,
   B00000,
   B11100,
@@ -79,7 +79,7 @@ byte carre03[] = {
   B00000,
   B11111
 };
-byte carre04[] = {
+byte carre04[8] = {
   B11111,
   B00000,
   B11110,
@@ -89,7 +89,7 @@ byte carre04[] = {
   B00000,
   B11111
 };
-byte carre05[] = {
+byte carre05[8] = {
   B11111,
   B00000,
   B11111,
@@ -99,7 +99,7 @@ byte carre05[] = {
   B00000,
   B11111
 };
-byte crochetouvrant[] = {
+byte crochetouvrant[8] = {
   B00011,
   B00010,
   B00010,
@@ -109,7 +109,7 @@ byte crochetouvrant[] = {
   B00010,
   B00011
 };
-byte crochetfermant[] = {
+byte crochetfermant[8] = {
   B11000,
   B01000,
   B01110,
@@ -118,16 +118,6 @@ byte crochetfermant[] = {
   B01110,
   B01000,
   B11000
-};
-byte fleche[] = {
-  B00000,
-  B00100,
-  B00010,
-  B11111,
-  B00010,
-  B00100,
-  B00000,
-  B00000
 };
 
 // Fonction pour pemettre le map avec variable float
@@ -151,15 +141,14 @@ void setup() {
   lcd.createChar(2, carre02);
   lcd.createChar(3, carre03);
   lcd.createChar(4, carre04);
-  lcd.createChar(5, carre05);                       
+  lcd.createChar(5, carre05);  
   lcd.createChar(6, crochetouvrant);
   lcd.createChar(7, crochetfermant);
-  lcd.createChar(9, fleche);
   HC12.begin(9600);               // Serial port to HC12
   pinMode(ATpin, OUTPUT);
   digitalWrite(ATpin, LOW); // Set HC-12 into AT Command mode
   delay(500);
-  HC12.print("AT+C006");  // passer sur le canal 006 (433.4Mhz + 6x400KHz)
+  HC12.print("AT+C056");  // passer sur le canal 006 (433.4Mhz + 56x400KHz)
   delay(500);
   digitalWrite(ATpin, HIGH); // HC-12 en normal mode
 } 
@@ -201,16 +190,32 @@ pour chaque ligne on fait :*/
       Serial.println(' ');
       chaine = "";  // vide la String
 
-      lcd.setCursor(0,0) ; // positionne le curseur à l'endroit voulu (colonne, ligne)
-      lcd.print ("Power:"); 
-      lcd.print (atof(Courant),2);  // char convertis en Float,  avec 2 décimales
-      lcd.print ("A "); // unité et espace de propreté
-      lcd.setCursor(12,0) ; // positionne le curseur à l'endroit voulu (colonne, ligne)
-      lcd.write(byte(9)); // fléche  
-      lcd.print (" ");
-      lcd.print (atof(Courant)*SupplyVoltage,0); // float avec 0 décimales
-      lcd.print ("Watt ");
-      
+// Affichage courant et Puissance
+      if ( atof(Courant) < 0.08 ){ // remise à zero si valeur mesurée très petite
+        float Courant = 0;
+        lcd.setCursor(0,0) ; // positionne le curseur à l'endroit voulu (colonne, ligne)
+        lcd.print ("Power:"); 
+        lcd.print (Courant,2);  // char convertis en Float,  avec 2 décimales
+        lcd.print ("A "); // unité et espace de propreté    
+        lcd.setCursor(12,0) ; // positionne le curseur à l'endroit voulu (colonne, ligne)
+        lcd.write(0b01111110); // fleche  depuis le standard Character Pattern
+        lcd.print (" ");
+        lcd.print (Courant*SupplyVoltage,0); // float avec 0 décimales
+        lcd.print ("Watt ");         
+      }
+      else {
+        lcd.setCursor(0,0) ; // positionne le curseur à l'endroit voulu (colonne, ligne)
+        lcd.print ("Power:"); 
+        lcd.print (atof(Courant),2);  // char convertis en Float,  avec 2 décimales
+        lcd.print ("A "); // unité et espace de propreté  
+        lcd.setCursor(12,0) ; // positionne le curseur à l'endroit voulu (colonne, ligne)
+        lcd.write(0b01111110); // fleche  depuis le standard Character Pattern
+        lcd.print (" ");
+        lcd.print (atof(Courant)*SupplyVoltage,0); // float avec 0 décimales
+        lcd.print ("Watt ");                
+      }
+
+// Affichage Batterie
       lcd.setCursor(0,1) ; // positionne le curseur à l'endroit voulu (colonne, ligne)
       lcd.print ("Batt:"); 
       lcd.print (atof(tension_batterie),3); 
