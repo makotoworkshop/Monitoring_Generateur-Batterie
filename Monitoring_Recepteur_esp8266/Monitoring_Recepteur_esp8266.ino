@@ -47,6 +47,7 @@ void setup() {
     delay(100);
   }
   Serial.println ("WiFi Connecté"); 
+  
 //——— InfluxDB ———//
   while (influxdb.opendb(DATABASE, DB_USER, DB_PASSWORD)!=DB_SUCCESS) { // Connexion à la base InfluxDB
     delay(10000);
