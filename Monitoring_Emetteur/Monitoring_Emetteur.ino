@@ -20,6 +20,10 @@ float tension=0.0;  // Variable tension mesurée
 float tension_batterie=0.0; // Variable tension batterie calculée
 float tension_regulateur=8925.0;  // Variable tension réelle aux bornes du régulateur -9V (en mV)
 
+int PIN_ACS712 = A1;
+double Voltage = 0;
+double Current = 0;
+
 /*********/
 /* SETUP */
 /*********/  
@@ -27,10 +31,11 @@ void setup() {
   Serial.begin(9600); // Debug
   HC12.begin(9600);               // Serial port to HC12
   // Pin capteurs
+  pinMode(PIN_ACS712, INPUT);
   pinMode(ATpin, OUTPUT);
   digitalWrite(ATpin, LOW); // Set HC-12 into AT Command mode
   delay(500);
-  HC12.print("AT+C006");  // passer sur le canal 006 (433.4Mhz + 6x400KHz)
+  HC12.print("AT+C056");  // passer sur le canal 006 (433.4Mhz + 56x400KHz)
   delay(500);
   digitalWrite(ATpin, HIGH); // HC-12 en normal mode
 }
@@ -44,14 +49,14 @@ void loop() {
   TensionMesuree();
   TensionBatterie();
 
-  for (int i = 0; i < 10; i++) {
-    Courant = Courant+0.01;
-    if (Courant >= 12){
-      Courant = 0;
-    }
-  }
+//  for (int i = 0; i < 10; i++) {
+//    Courant = Courant+0.01;
+//    if (Courant >= 12){
+//      Courant = 0;
+//    }
+//  }
   
-  chaine = String(tension_batterie,3) + MessageTensionBatterie + String(Courant,2) + MessageCourant;  // construction du message
+  chaine = String(tension_batterie,3) + MessageTensionBatterie + String(Current,3) + MessageCourant;  // construction du message
   Serial.println ( "chaine String : " +chaine );
   HC12.print(chaine); // send radio data
   delay(100);
@@ -61,20 +66,28 @@ void loop() {
 /* FONCTIONS */
 /*************/
 void MesureCourant() {
-  Serial.print("Courant : ");
-  Serial.print(Courant);
-  Serial.print(" A | Puissance : ");
-  Serial.print(Courant*SupplyVoltage);
-  Serial.println(" Watt");
-//  lcd.setCursor(0,0) ; // positionne le curseur à l'endroit voulu (colonne, ligne)
-//  lcd.print ("Power:"); 
-//  lcd.print (Courant,2); // float avec 2 décimales
-//  lcd.print ("A "); // unité et espace de propreté
-//  lcd.setCursor(12,0) ; // positionne le curseur à l'endroit voulu (colonne, ligne)
-//  lcd.write(byte(9)); // fléche  
-//  lcd.print (" ");
-//  lcd.print (Courant*SupplyVoltage,0); // float avec 0 décimales
-//  lcd.print ("Watt ");
+//  Serial.print("Courant : ");
+//  Serial.print(Courant);
+//  Serial.print(" A | Puissance : ");
+//  Serial.print(Courant*SupplyVoltage);
+//  Serial.println(" Watt");
+
+// Voltage is Sensed 1000 Times for precision
+for(int i = 0; i < 1000; i++) { // ça ralentis tout, mais c'est indispensable !
+Voltage = (Voltage + (.0049 * analogRead(PIN_ACS712))); // (5 V / 1024 (Analog) = 0.0049) which converter Measured analog input voltage to 5 V Range
+delay(1);
+}
+Voltage = Voltage /1000;
+
+Current = (Voltage -2.5)/ 0.100; // Sensed voltage is converter to current (0.100 pour modèle 20A)
+
+Serial.print("\n Voltage Sensed (V) = "); // shows the measured voltage
+Serial.print(Voltage,3); // the ‘2’ after voltage allows you to display 2 digits after decimal point
+Serial.print("\t Current (A) = "); // shows the voltage measured
+Serial.println(Current,3); // the ‘2’ after voltage allows you to display 2 digits after decimal point
+
+
+
 }
 
 void MesureBrute() {
