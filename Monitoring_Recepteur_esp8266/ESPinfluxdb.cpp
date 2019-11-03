@@ -132,7 +132,7 @@ void dbMeasurement::addTag(String key, String value) {
 
 void dbMeasurement::addField(String key, float value) {
         _data = (_data == "") ? (" ") : (_data += ",");
-        _data += key + "=" + String(value,3);
+        _data += key + "=" + String(value,3);   // ajouté ,3 pour avoir 3 décimales
 }
 
 String dbMeasurement::postString() {
