@@ -12,7 +12,6 @@
 //################
 //——— Radio HC-12 ———//
 SoftwareSerial HC12(D5, D6);  // HC-12 TX Pin et RX Pin
-#define ATpin D4              // poir passer le HC-12 en AT mode
 char acquis_data;
 String chaine;
 float Voltage=12;
