@@ -28,7 +28,7 @@ double Current = 0;
 /* SETUP */
 /*********/  
 void setup() {
-  Serial.begin(9600); // Debug
+//  Serial.begin(9600); // Debug
   HC12.begin(9600);               // Serial port to HC12
   // Pin capteurs
   pinMode(PIN_ACS712, INPUT);
@@ -74,7 +74,7 @@ void MesureCourant() {
 
 // Voltage is Sensed 1000 Times for precision
 for(int i = 0; i < 1000; i++) { // ça ralentis tout, mais c'est indispensable !
-Voltage = (Voltage + (.0049 * analogRead(PIN_ACS712))); // (5 V / 1024 (Analog) = 0.0049) which converter Measured analog input voltage to 5 V Range
+Voltage = (Voltage + (0.004882812 * analogRead(PIN_ACS712))); // (5 V / 1024 (Analog) = 0.0049) which converter Measured analog input voltage to 5 V Range
 delay(1);
 }
 Voltage = Voltage /1000;
