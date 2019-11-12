@@ -1,45 +1,45 @@
-// inspiré du code de  X. HINAULT - Le 12/03/2010 www.mon-club-elec.fr 
-// --- Que fait ce programme ? ---
-// - Mesure la tension d'une batterie au plomb 12V. 
-// - Affichage de la valeur de la mesure continue sur un écran LCD 
-// - La tension de la Batterie est abaissé à l'aide d'un régulateur -9V (7909)
-// - Ajout d'une jauge de capacité batterie et de la mesure du courant de recharge dans la batterie
-// --- Fonctionnalités utilisées ---
+//———— Que fait ce programme ? ————
+// ---> Récupére les données transmise par un module HC-12,
+// ---> Affichage la mesure de la tension d'une batterie au plomb 12V sur un écran LCD.
+// ---> Affichage l'intensité et la puissance fournie à la batterie par une génératrice 12V. 
+//———— Fonctionnalités utilisées ————
 // Utilise un afficheur LCD alphanumérique2x20 en mode 4 bits 
-// Utilise la conversion analogique numérique 10bits sur les voies analogiques  analog 0, 
-// --- Circuit à réaliser ---
-// Connecter  sur la broche 12 la broche RS du LCD
-// Connecter  sur la broche 11 la broche E du LCD
-// Connecter  sur la broche 5 la broche D4 du LCD
-// Connecter  sur la broche 4 la broche D5 du LCD
-// Connecter  sur la broche 3 la broche D6 du LCD
-// Connecter  sur la broche 2 la broche D7 du LCD
-// Broche Analog 0 (=broche 14) en entrée Analogique < régulateur
-// +++ Réglages possibles +++
-// La variable « tension_regulateur » est à ajuster en mesurant au multimétre la tension entre les broche 1 et 3 
-// du régulateur, ou en mesurant directement la tension de la batterie pour faire correspondre la mesure Arduino.
+//———— Circuit à réaliser ————
+// Broche 12 sur la broche RS du LCD
+// Broche 11 sur la broche E du LCD
+// Broche 5 sur la broche D4 du LCD
+// Broche 4 sur la broche D5 du LCD
+// Broche 3 sur la broche D6 du LCD
+// Broche 2 sur la broche D7 du LCD
+// Broche 7 sur HC-12 to AT mode
+// Broche 8 HC-12 TX Pin
+// Broche 9 HC-12 RX Pin
+//———— Réglages possibles ————
+// Canal de réception (voir setup)
+// Voltage : Utilisé pour le calcul de la puissance en Watt.
+// MiniC : pour régler le courant minimum mesuré en dessous duquel la valeur est forcée à 0, pour prendre
+// en compte le fait que la mesure du zero ne tombe jamais pile.
 
-#include <LiquidCrystal.h> // Inclusion de la librairie pour afficheur LCD 
-#include <SoftwareSerial.h>
+#include <LiquidCrystal.h>  // lib LCD
+#include <SoftwareSerial.h> // lib Transmission série
 
 //################
 //# DÉCLARATIONS #
 //################
-
-// Radio HC-12
-SoftwareSerial HC12(8, 9); // HC-12 TX Pin, HC-12 RX Pin
-#define ATpin A3 // used to switch HC-12 to AT mode
+//——— Radio HC-12 ———//
+SoftwareSerial HC12(8, 9);  // HC-12 TX Pin, HC-12 RX Pin
+#define ATpin 7             // poir passer le HC-12 en AT mode
 char acquis_data;
 String chaine;
+float Voltage=12;
+float MiniC=0.08;           // courant minimum mesuré en dessous duquel la valeur est forcée à 0.
+float tension_batterie_float;
+float Courant_float;
 
-//char tension_batterie;   // variable des data reçue
-//char Courant;   // variable des data reçue
-float SupplyVoltage=12;
-float tension_jauge;
-
+//——— Écran LCD ———//
 const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2; // Déclaration LCD
-LiquidCrystal lcd(rs, en, d4, d5, d6, d7);  // initialisation LCD en mode 4 bits 
-byte carre00[8] = {  // Déclaration de caractères personnalisés
+LiquidCrystal lcd(rs, en, d4, d5, d6, d7);                  // Pins LCD en mode 4 bits 
+byte carre00[8] = {                                         // caractères personnalisés
   B11111,
   B00000,
   B00000,
@@ -120,7 +120,7 @@ byte crochetfermant[8] = {
   B11000
 };
 
-// Fonction pour pemettre le map avec variable float
+//——— Fonction pour pemettre le map avec variable float ———
 float mapfloat(float x, float in_min, float in_max, float out_min, float out_max) {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
@@ -129,14 +129,24 @@ float mapfloat(float x, float in_min, float in_max, float out_min, float out_max
 //# SETUP #
 //#########
 void setup() {
-  Serial.begin(9600); // Debug
-  lcd.begin(20,4); // Initialise le LCD avec 20 colonnes x 4 lignes 
-  delay(10); // pause rapide pour laisser temps initialisation
-  lcd.print("LCD OK") ; // affiche la chaîne texte - message de test
-  delay(2000); // pause de 2 secondes
-  lcd.clear(); // // efface écran et met le curseur en haut à gauche
-  delay(10); // pour laisser temps effacer écran
-  lcd.createChar(0, carre00); // Création de caractères personnalisés
+//  Serial.begin(9600);         // Debug
+  //——— HC12 ———//
+  HC12.begin(9600);           // Serial port to HC12
+  pinMode(ATpin, OUTPUT);
+  digitalWrite(ATpin, LOW);   // HC-12 en mode commande AT
+  delay(500);
+  HC12.print("AT+C056");      // passer sur le canal 056 (433.4Mhz + 56x400KHz)
+  delay(500);
+  digitalWrite(ATpin, HIGH);  // HC-12 en normal mode
+
+//——— LCD ———//
+  lcd.begin(20,2);            // Initialise le LCD avec 20 colonnes x 2 lignes 
+  delay(10);
+  lcd.print("LCD OK");        // affiche LCD OK
+  delay(2000);
+  lcd.clear();
+  delay(10);
+  lcd.createChar(0, carre00); // Les 8 caractères personnalisés
   lcd.createChar(1, carre01);
   lcd.createChar(2, carre02);
   lcd.createChar(3, carre03);
@@ -144,13 +154,6 @@ void setup() {
   lcd.createChar(5, carre05);  
   lcd.createChar(6, crochetouvrant);
   lcd.createChar(7, crochetfermant);
-  HC12.begin(9600);               // Serial port to HC12
-  pinMode(ATpin, OUTPUT);
-  digitalWrite(ATpin, LOW); // Set HC-12 into AT Command mode
-  delay(500);
-  HC12.print("AT+C056");  // passer sur le canal 006 (433.4Mhz + 56x400KHz)
-  delay(500);
-  digitalWrite(ATpin, HIGH); // HC-12 en normal mode
 } 
 
 //#############
@@ -167,81 +170,67 @@ void loop() {
 //#############
 void Reception() {
 // surtout pas de delay dans cette boucle, sinon les data reçues sont erronnées.
-  while (HC12.available()) {      // If HC-12 has data
+  while (HC12.available()) {        // If HC-12 has data
     acquis_data = HC12.read();
     chaine = chaine + acquis_data;
-//    Serial.println (chaine);           // Attention, chaine est donc une String
+//    Serial.println (chaine);      // Attention, chaine est donc une String
 /* message reçu de la forme 
-12.43 VOLTS / 0.70 AMPERES
+12.665 VOL / 0.045 AMP
 pour chaque ligne on fait :*/
 
- //   if (acquis_data == 10) {  //détection de fin de ligne : en ascii
-    if (chaine.endsWith("\n")) {  //détection de fin de ligne : méthodes String
-//      Serial.println ("fin de ligne");   // debug
-      String phrase = "12.43 VOL / 0.70 AMP";
-      char tension_batterie[5];
-      char Courant[4];
-//      sscanf(phrase.c_str(), "%s VOL / %s AMP", tension_batterie, &Courant);
-      sscanf(chaine.c_str(), "%s VOL / %s AMP", tension_batterie, &Courant); //la chaine à parser est dans une String, avec la méthode c_str()
-      Serial.print("VOLTS:");
-      Serial.println(atof(tension_batterie),3); // char convertis en Float
-      Serial.print("AMPERES:");
-      Serial.println(atof(Courant),2);  // float avec 2 décimales
+    if (chaine.endsWith("\n")) {      //détection de fin de ligne : méthodes String
+//      Serial.println ("fin de ligne");          // debug
+//      String phrase = "12.665 VOL / 0.045 AMP";  //debug
+      char tension_batterie[5];   // chaine de 6 caractères pour stocker le texte avant le mot VOL
+      char Courant[3];            // chaine de 4 caractères pour stocker le texte avant le mot AMP
+//      sscanf(phrase.c_str(), "%s VOL / %s AMP", tension_batterie, &Courant);  //debug
+      sscanf(chaine.c_str(), "%s VOL / %s AMP", tension_batterie, &Courant);  // la chaine à parser est dans une String, avec la méthode c_str()
+
+      tension_batterie_float = atof(tension_batterie),3;  // char convertie en Float, avec 3 décimales
+      Courant_float = atof(Courant),2;                    // char convertie en Float, avec 2 décimales
+
+      Serial.print("VOLTS: ");
+      Serial.println(tension_batterie_float,3); // float avec 3 décimales
+      Serial.print("AMPERES: ");
+      Serial.println(Courant_float,3);
+      Serial.print("Watt: ");
+      Serial.println(Courant_float*Voltage,0); // float avec 0 décimales
       Serial.println(' ');
-      chaine = "";  // vide la String
-
-// Affichage courant et Puissance
-      if ( atof(Courant) < 0.08 ){ // remise à zero si valeur mesurée très petite
-        float Courant = 0;
-        lcd.setCursor(0,0) ; // positionne le curseur à l'endroit voulu (colonne, ligne)
-        lcd.print ("Power:"); 
-        lcd.print (Courant,2);  // char convertis en Float,  avec 2 décimales
-        lcd.print ("A "); // unité et espace de propreté    
-        lcd.setCursor(12,0) ; // positionne le curseur à l'endroit voulu (colonne, ligne)
-        lcd.write(0b01111110); // fleche  depuis le standard Character Pattern
-        lcd.print (" ");
-        lcd.print (Courant*SupplyVoltage,0); // float avec 0 décimales
-        lcd.print ("Watt ");         
+      
+// Affichage LCD courant et Puissance
+      if ( Courant_float < MiniC ){   // remise à zero forcée si valeur mesurée très petite
+        Courant_float = 0;
       }
-      else {
-        lcd.setCursor(0,0) ; // positionne le curseur à l'endroit voulu (colonne, ligne)
-        lcd.print ("Power:"); 
-        lcd.print (atof(Courant),2);  // char convertis en Float,  avec 2 décimales
-        lcd.print ("A "); // unité et espace de propreté  
-        lcd.setCursor(12,0) ; // positionne le curseur à l'endroit voulu (colonne, ligne)
-        lcd.write(0b01111110); // fleche  depuis le standard Character Pattern
-        lcd.print (" ");
-        lcd.print (atof(Courant)*SupplyVoltage,0); // float avec 0 décimales
-        lcd.print ("Watt ");                
-      }
+      lcd.setCursor(0,0);
+      lcd.print ("Power:"); 
+      lcd.print (Courant_float,2);    // float avec 2 décimales
+      lcd.print ("A ");               // unité et espace
+      lcd.setCursor(12,0);
+      lcd.write(0b01111110);          // caractère : fleche, depuis le Standard Character Pattern du LCD
+      lcd.print (" ");
+      lcd.print (Courant_float*Voltage,0);
+      lcd.print ("Watt ");   
 
-// Affichage Batterie
-      lcd.setCursor(0,1) ; // positionne le curseur à l'endroit voulu (colonne, ligne)
+// Affichage LCD Batterie
+      lcd.setCursor(0,1);
       lcd.print ("Batt:"); 
-      lcd.print (atof(tension_batterie),3); 
-      lcd.print ("V "); // unité et espace de propreté
-      tension_jauge = atof(tension_batterie); 
-      Serial.print ("tension_jauge = "); 
-      Serial.print(tension_jauge,3);
-      Serial.println("  ");  
-      // placé ici pour éviter le clignottement du crochetouvrant
-      lcd.setCursor(12, 1);
-      lcd.write(byte(6)); // crochet ouvrant
+      lcd.print (tension_batterie_float,3); 
+      lcd.print ("V ");
+
+      chaine = "";    // vide la String chaine
     }
   }
 }
 
-void Jauge() {
-//float test = 13;
-
+void Jauge() {          // Jauge de charge batterie
+  lcd.setCursor(12, 1);
+  lcd.write(byte(6)); // crochet ouvrant
   lcd.setCursor(19, 1);
-  lcd.write(byte(7)); // crochet fermant
-//  float NiveauBatterie = mapfloat(test, 11.4, 12.73, 0, 30);   // Discrétise la valeur de la tension batterie
-  float NiveauBatterie = mapfloat(tension_jauge, 11.4, 12.73, 0, 30);   // Discrétise la valeur de la tension batterie
-  int NiveauBatterieBarre = (int)NiveauBatterie;  // conversion en entier
+  lcd.write(byte(7));   // crochet fermant
+  float NiveauBatterie = mapfloat(tension_batterie_float, 11.4, 12.73, 0, 30); // Discrétise la valeur de la tension batterie
+  int NiveauBatterieBarre = (int)NiveauBatterie;                      // conversion en entier
 
-  // en cas de dépassement des limites haute et basse et permettre l'affichage non-erroné
-  if (NiveauBatterie > 30) {
+  if (NiveauBatterie > 30) {  // en cas de dépassement des limites haute et basse et permettre l'affichage non-erroné
     NiveauBatterieBarre = 30;
     lcd.setCursor(13, 1);
     lcd.print ("Pleine"); 
